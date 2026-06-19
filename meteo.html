@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Météo</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #f4f4f6; min-height: 100vh; display: flex; justify-content: center; padding: 2rem 1rem; }
+.app { width: 100%; max-width: 680px; }
+h1 { font-size: 20px; font-weight: 500; margin-bottom: 1rem; color: #1a1a1a; }
+.search-bar { display: flex; gap: 8px; margin-bottom: 1rem; }
+.search-wrap { flex: 1; position: relative; }
+.search-wrap input { width: 100%; padding: 10px 14px; border: 1px solid #d0d0d0; border-radius: 8px; font-size: 15px; background: white; outline: none; }
+.search-wrap input:focus { border-color: #1a7fc4; box-shadow: 0 0 0 3px rgba(26,127,196,0.1); }
+.search-bar button { padding: 10px 18px; background: #1a7fc4; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.search-bar button:hover { background: #1568a8; }
+.suggestions-list { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: white; border: 1px solid #d0d0d0; border-radius: 8px; z-index: 10; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.suggestion-item { padding: 10px 14px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f0f0f0; color: #1a1a1a; }
+.suggestion-item:last-child { border-bottom: none; }
+.suggestion-item:hover { background: #f5f5f5; }
+.error-msg { background: #fdecea; color: #c0392b; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 1rem; }
+.tabs { display: flex; gap: 0; margin-bottom: 1rem; border-bottom: 1px solid #e0e0e0; }
+.tab { padding: 8px 14px; font-size: 13px; cursor: pointer; border: none; border-bottom: 2px solid transparent; color: #666; background: none; }
+.tab.active { color: #1a7fc4; border-bottom-color: #1a7fc4; font-weight: 500; }
+.hero { background: linear-gradient(135deg, #1a7fc4, #0e5a9e); border-radius: 12px; padding: 1.5rem; color: white; margin-bottom: 1rem; }
+.hero-city { font-size: 13px; opacity: 0.85; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+.hero-main { display: flex; align-items: center; gap: 1.5rem; }
+.hero-temp { font-size: 64px; font-weight: 300; line-height: 1; }
+.hero-center { flex: 1; text-align: center; }
+.hero-desc { font-size: 15px; margin-top: 8px; opacity: 0.95; }
+.weather-icon { font-size: 52px; line-height: 1; }
+.hero-wind { display: flex; align-items: center; gap: 6px; font-size: 13px; opacity: 0.9; }
+.hourly-strip { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px; background: #e0e0e0; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; margin-bottom: 1rem; }
+.hour-cell { background: white; padding: 10px 6px; text-align: center; }
+.hour-cell.now { background: #1a7fc4; color: white; }
+.hour-label { font-size: 11px; color: #888; margin-bottom: 4px; }
+.hour-cell.now .hour-label { color: rgba(255,255,255,0.8); }
+.hour-icon { font-size: 20px; line-height: 1; margin: 2px 0; }
+.hour-temp { font-size: 14px; font-weight: 500; }
+.bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.card { background: white; border: 1px solid #e0e0e0; border-radius: 12px; padding: 1rem 1.25rem; }
+.card-title { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.precip-bar { height: 40px; display: flex; align-items: flex-end; gap: 3px; margin-top: 10px; }
+.precip-col { flex: 1; background: #e8f0f7; border-radius: 2px 2px 0 0; min-height: 3px; }
+.precip-col.rain { background: #1a7fc4; }
+.precip-labels { display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-top: 4px; }
+.norms { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.norm-item { text-align: center; background: #f5f7fa; border-radius: 8px; padding: 8px; }
+.norm-val { font-size: 22px; font-weight: 500; color: #1a1a1a; }
+.norm-label { font-size: 11px; color: #888; margin-top: 2px; }
+.norm-ecart { font-size: 12px; font-weight: 500; margin-top: 4px; }
+.ecart-pos { color: #c0392b; }
+.ecart-neg { color: #2980b9; }
+.no-data { text-align: center; padding: 4rem 2rem; color: #888; font-size: 14px; background: white; border-radius: 12px; border: 1px solid #e0e0e0; }
+.no-data i { font-size: 36px; display: block; margin-bottom: 12px; color: #bbb; }
+@media (max-width: 480px) {
+  .bottom-grid { grid-template-columns: 1fr; }
+  .hero-temp { font-size: 48px; }
+  .hourly-strip { grid-template-columns: repeat(4, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Météo</h1>
+
+  <div class="search-bar">
+    <div class="search-wrap">
+      <input type="text" id="searchInput" placeholder="Ville ou code postal (ex: Blois, 41000)" autocomplete="off" />
+      <div class="suggestions-list" id="suggList" style="display:none;"></div>
+    </div>
+    <button id="searchBtn"><i class="ti ti-search"></i> Rechercher</button>
+  </div>
+
+  <div id="errorMsg" class="error-msg" style="display:none;"></div>
+
+  <div id="weatherContent" style="display:none;">
+    <div class="tabs">
+      <button class="tab active">Aujourd'hui</button>
+      <button class="tab">Par heure</button>
+      <button class="tab">Demain</button>
+    </div>
+
+    <div class="hero">
+      <div class="hero-city" id="heroCity">—</div>
+      <div class="hero-main">
+        <div class="hero-temp" id="heroTemp">—</div>
+        <div class="hero-center">
+          <div class="weather-icon" id="heroIcon">⛅</div>
+          <div class="hero-desc" id="heroDesc">—</div>
+        </div>
+        <div class="hero-wind" id="heroWind">
+          <i class="ti ti-wind"></i> —
+        </div>
+      </div>
+    </div>
+
+    <div class="hourly-strip" id="hourlyStrip"></div>
+
+    <div class="bottom-grid">
+      <div class="card">
+        <div class="card-title"><i class="ti ti-cloud-rain"></i> Pluie dans l'heure</div>
+        <div id="precipStatus" style="font-size:14px; font-weight:500; color:#1a1a1a;">—</div>
+        <div class="precip-bar" id="precipBar"></div>
+        <div class="precip-labels">
+          <span>5 min</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="ti ti-chart-line"></i> Comparaison aux normales</div>
+        <div class="norms">
+          <div class="norm-item">
+            <div class="norm-val" id="normMin">—</div>
+            <div class="norm-label">Minimale du jour</div>
+            <div class="norm-ecart" id="normMinEcart">—</div>
+          </div>
+          <div class="norm-item">
+            <div class="norm-val" id="normMax">—</div>
+            <div class="norm-label">Maximale du jour</div>
+            <div class="norm-ecart" id="normMaxEcart">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="placeholder" class="no-data">
+    <i class="ti ti-map-pin"></i>
+    Entrez une ville ou un code postal pour afficher la météo
+  </div>
+</div>
+
+<script>
+const WMO = {
+  0:['Ciel dégagé','☀️'], 1:['Peu nuageux','🌤️'], 2:['Partiellement nuageux','⛅'], 3:['Couvert','☁️'],
+  45:['Brouillard','🌫️'], 48:['Brouillard givrant','🌫️'],
+  51:['Bruine légère','🌦️'], 53:['Bruine','🌦️'], 55:['Bruine dense','🌧️'],
+  61:['Pluie faible','🌧️'], 63:['Pluie modérée','🌧️'], 65:['Pluie forte','🌧️'],
+  71:['Neige faible','❄️'], 73:['Neige','❄️'], 75:['Neige forte','❄️'],
+  77:['Grésil','🌨️'], 80:['Averses faibles','🌦️'], 81:['Averses','🌦️'], 82:['Averses fortes','⛈️'],
+  85:['Averses de neige','🌨️'], 86:['Averses de neige fortes','🌨️'],
+  95:['Orageux','⛈️'], 96:['Orage avec grêle','⛈️'], 99:['Orage avec grêle forte','⛈️']
+};
+
+const inp = document.getElementById('searchInput');
+const suggList = document.getElementById('suggList');
+let suggestTimeout;
+
+inp.addEventListener('input', () => {
+  clearTimeout(suggestTimeout);
+  const q = inp.value.trim();
+  if (q.length < 2) { suggList.style.display = 'none'; return; }
+  suggestTimeout = setTimeout(() => fetchSuggestions(q), 300);
+});
+
+inp.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { suggList.style.display = 'none'; doSearch(); }
+});
+
+document.getElementById('searchBtn').addEventListener('click', doSearch);
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrap')) suggList.style.display = 'none';
+});
+
+async function fetchSuggestions(q) {
+  const isPostal = /^\d{2,}/.test(q);
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=fr&format=json${isPostal ? '&countrycode=FR' : ''}`;
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+    const results = (d.results || []).filter(x =>
+      !isPostal || (x.postcodes && x.postcodes.some(p => p.startsWith(q)))
+    );
+    if (!results.length) { suggList.style.display = 'none'; return; }
+    suggList.innerHTML = '';
+    results.slice(0, 5).forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'suggestion-item';
+      const label = [item.name, item.admin1, item.country_code === 'FR' ? null : item.country].filter(Boolean).join(', ');
+      div.textContent = label;
+      div.addEventListener('click', () => {
+        inp.value = item.name;
+        suggList.style.display = 'none';
+        loadWeather(item.latitude, item.longitude, label);
+      });
+      suggList.appendChild(div);
+    });
+    suggList.style.display = 'block';
+  } catch(e) { suggList.style.display = 'none'; }
+}
+
+async function doSearch() {
+  const q = inp.value.trim();
+  if (!q) return;
+  showError('');
+  try {
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=3&language=fr&format=json`;
+    const r = await fetch(url);
+    const d = await r.json();
+    if (!d.results || !d.results.length) { showError('Ville non trouvée.'); return; }
+    const item = d.results[0];
+    const label = [item.name, item.admin1, item.country_code === 'FR' ? null : item.country].filter(Boolean).join(', ');
+    loadWeather(item.latitude, item.longitude, label);
+  } catch(e) { showError('Erreur de connexion.'); }
+}
+
+async function loadWeather(lat, lon, cityName) {
+  showError('');
+  document.getElementById('weatherContent').style.display = 'none';
+  document.getElementById('placeholder').style.display = 'none';
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code,precipitation_probability&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto&forecast_days=2`;
+    const r = await fetch(url);
+    const d = await r.json();
+    renderWeather(d, cityName);
+  } catch(e) {
+    showError('Impossible de charger les données météo.');
+    document.getElementById('placeholder').style.display = 'block';
+  }
+}
+
+function renderWeather(d, cityName) {
+  const cur = d.current;
+  const [desc, icon] = WMO[cur.weather_code] || ['—', '❓'];
+
+  document.getElementById('heroCity').textContent = cityName.toUpperCase();
+  document.getElementById('heroTemp').textContent = Math.round(cur.temperature_2m) + '°';
+  document.getElementById('heroIcon').textContent = icon;
+  document.getElementById('heroDesc').textContent = desc;
+  document.getElementById('heroWind').innerHTML = `<i class="ti ti-wind"></i> ${Math.round(cur.wind_speed_10m)} km/h`;
+
+  const now = new Date();
+  const nowH = now.getHours();
+  const hours = d.hourly;
+  const strip = document.getElementById('hourlyStrip');
+  strip.innerHTML = '';
+  let shown = 0;
+  for (let i = 0; i < hours.time.length && shown < 6; i++) {
+    const t = new Date(hours.time[i]);
+    if (t.getHours() < nowH && t.getDate() === now.getDate()) continue;
+    const isNow = shown === 0;
+    const cell = document.createElement('div');
+    cell.className = 'hour-cell' + (isNow ? ' now' : '');
+    const [, hIcon] = WMO[hours.weather_code[i]] || ['—', '❓'];
+    const label = isNow ? 'Maintenant' : t.getHours() + ':00';
+    cell.innerHTML = `<div class="hour-label">${label}</div><div class="hour-icon">${hIcon}</div><div class="hour-temp">${Math.round(hours.temperature_2m[i])}°</div>`;
+    strip.appendChild(cell);
+    shown++;
+  }
+
+  document.getElementById('precipStatus').textContent = 'Pas de précipitations';
+  const bar = document.getElementById('precipBar');
+  bar.innerHTML = '';
+  for (let i = 0; i < 6; i++) {
+    const col = document.createElement('div');
+    col.className = 'precip-col';
+    col.style.height = '100%';
+    bar.appendChild(col);
+  }
+
+  const daily = d.daily;
+  const tMin = Math.round(daily.temperature_2m_min[0]);
+  const tMax = Math.round(daily.temperature_2m_max[0]);
+  const month = now.getMonth();
+  const normMins = [2,3,4,7,10,13,14,14,12,9,5,3];
+  const normMaxs = [7,8,12,15,19,22,25,25,22,16,11,7];
+  const ecMin = tMin - normMins[month];
+  const ecMax = tMax - normMaxs[month];
+
+  document.getElementById('normMin').textContent = tMin + '°';
+  document.getElementById('normMax').textContent = tMax + '°';
+  document.getElementById('normMinEcart').textContent = (ecMin >= 0 ? '+' : '') + ecMin + '°';
+  document.getElementById('normMaxEcart').textContent = (ecMax >= 0 ? '+' : '') + ecMax + '°';
+  document.getElementById('normMinEcart').className = 'norm-ecart ' + (ecMin > 0 ? 'ecart-pos' : 'ecart-neg');
+  document.getElementById('normMaxEcart').className = 'norm-ecart ' + (ecMax > 0 ? 'ecart-pos' : 'ecart-neg');
+
+  document.getElementById('weatherContent').style.display = 'block';
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+loadWeather(47.5936, 1.3298, 'Blois, Centre-Val de Loire');
+inp.value = 'Blois';
+</script>
+</body>
+</html>
